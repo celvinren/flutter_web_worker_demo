@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:html';
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -36,7 +39,10 @@ class MyHomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                final result = await webWorkerResult().asBroadcastStream().last;
+                print('Value: $result');
+              },
               child: const Text('Test'),
             ),
             const Text(
@@ -46,5 +52,39 @@ class MyHomePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Stream<int> webWorkerResult() async* {
+    StreamController<int> controller = StreamController<int>();
+
+    // check is Web Worker support
+    if (Worker.supported) {
+      // create Web Worker
+      final worker = Worker('worker/worker.js');
+
+      // send required data to Worker
+      worker.postMessage({
+        'data': 10,
+        'a': 2,
+        'b': 3,
+      });
+
+      // listen Worker result
+      worker.onMessage.listen((event) {
+        print('Received from worker: ${event.data}');
+        // handle Worker result here
+        final result = event.data is int ? event.data : null;
+        if (result != null) {
+          controller.add(result);
+        }
+        worker.terminate(); // end Worker
+        controller.close(); // end Stream
+      });
+    } else {
+      print('Web Workers are not supported in this environment.');
+      controller.close(); // end Stream
+    }
+
+    yield* controller.stream;
   }
 }
