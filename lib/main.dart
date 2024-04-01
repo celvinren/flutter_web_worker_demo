@@ -1,3 +1,5 @@
+import 'dart:js' as js;
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -36,7 +38,17 @@ class MyHomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                js.context.callMethod('postMessageToWorker', [10, 2, 3]);
+
+                // wait workerResult result
+                while (js.context['workerResult'] == null) {
+                  await Future.delayed(const Duration(milliseconds: 100));
+                }
+
+                final result = js.context['workerResult'].toString();
+                print('Result: $result');
+              },
               child: const Text('Test'),
             ),
             const Text(
