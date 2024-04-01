@@ -39,6 +39,19 @@
   </script>
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
+  <script>
+    const worker = new Worker('worker/worker.js');
+  
+    worker.onmessage = function(event) {
+      // When Web Worker got a return value，send the result to Flutter
+      window.workerResult = event.data;
+    };
+  
+    // expose postMessage function in Web Worker to Flutter
+    window.postMessageToWorker = function(data, a, b) {
+      worker.postMessage({ data: data, a: a, b: b });
+    };
+  </script>
 </head>
 
 <body>
