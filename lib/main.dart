@@ -42,7 +42,7 @@ class MyHomePage extends StatelessWidget {
           children: <Widget>[
             ElevatedButton(
               onPressed: () async {
-                await findMistakes('en', 'test');
+                await findMistakes('en', 'test', ['hello', 'world']);
               },
               child: const Text('Test'),
             ),
@@ -56,17 +56,20 @@ class MyHomePage extends StatelessWidget {
   }
 }
 
-Future<String?> findMistakes(String locale, String text) async {
-  final dataStream = _webWorkerResult(locale, text).asBroadcastStream();
+Future<String?> findMistakes(
+    String locale, String text, List<String> dic) async {
+  final dataStream = _webWorkerResult(locale, text, dic).asBroadcastStream();
   final result = await dataStream.last;
   return result;
 }
 
-Stream<String> _webWorkerResult(String locale, String text) async* {
+Stream<String> _webWorkerResult(
+    String locale, String text, List<String> dic) async* {
   StreamController<String> controller = StreamController<String>();
-
+  final jsDic = js.JsObject.jsify(dic);
   // check is Web Worker support
-  js.context.callMethod('postMessageToFindMistakesWorker', [locale, text]);
+  js.context
+      .callMethod('postMessageToFindMistakesWorker', [locale, text, jsDic]);
 
   var result;
   // wait workerResult result
