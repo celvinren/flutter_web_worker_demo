@@ -31,11 +31,15 @@ class MyHomePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
       ),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('Test'),
+            ),
+            const Text(
               'You have pushed the button this many times:',
             ),
           ],
