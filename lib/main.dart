@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js' as js;
 import 'dart:js_util' as js_util;
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -72,7 +73,8 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             ElevatedButton(
               onPressed: () async {
-                await findMistakes('en', 'test', ['hello', 'world']);
+                await findMistakes(
+                    'en', 'test${Random().nextInt(100)}', ['hello', 'world']);
               },
               child: const Text('Start Processing'),
             ),
