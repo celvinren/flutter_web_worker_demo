@@ -44,6 +44,13 @@ class JsEventStream {
     ]);
   }
 
+  Future<void> findMistakes(
+      String locale, String text, List<String> dictionary) async {
+    final jsDictionary = js.JsObject.jsify(dictionary);
+    js.context.callMethod(
+        'postMessageToFindMistakesWorker', [locale, text, jsDictionary]);
+  }
+
   void dispose() {
     _controller.close();
   }
@@ -85,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             ElevatedButton(
               onPressed: () async {
-                await findMistakes(
+                await _jsEventStream.findMistakes(
                     'en', 'test${Random().nextInt(100)}', ['hello', 'world']);
               },
               child: const Text('Start Processing'),
@@ -102,10 +109,4 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
-}
-
-Future<void> findMistakes(String locale, String text, List<String> dic) async {
-  final jsDic = js.JsObject.jsify(dic);
-  js.context
-      .callMethod('postMessageToFindMistakesWorker', [locale, text, jsDic]);
 }
