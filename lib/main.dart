@@ -1,3 +1,8 @@
+// ignore_for_file: avoid_web_libraries_in_flutter
+
+import 'dart:async';
+import 'dart:js' as js;
+
 import 'package:flutter/material.dart';
 
 void main() {
@@ -36,7 +41,9 @@ class MyHomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                await findMistakes('en', 'test');
+              },
               child: const Text('Test'),
             ),
             const Text(
@@ -47,4 +54,37 @@ class MyHomePage extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<String?> findMistakes(String locale, String text) async {
+  final dataStream = _webWorkerResult(locale, text).asBroadcastStream();
+  final result = await dataStream.last;
+  return result;
+}
+
+Stream<String> _webWorkerResult(String locale, String text) async* {
+  StreamController<String> controller = StreamController<String>();
+
+  // check is Web Worker support
+  js.context.callMethod('postMessageToFindMistakesWorker', [locale, text]);
+
+  var result;
+  // wait workerResult result
+  while (js.context['foundMistakesResult'] == null || result == null) {
+    result = js.context.callMethod('getResult');
+    if (result == null) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
+  js.context.callMethod('deleteResult');
+  // print('Result: original - ${imageData.length}');
+  // print('Result: resized - ${result.length}');
+  // handle Worker result here
+  if (result != null) {
+    controller.add(result);
+    controller.close(); // end Stream
+  }
+
+  yield* controller.stream;
 }
