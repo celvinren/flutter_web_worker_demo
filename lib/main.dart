@@ -25,6 +25,30 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class JsEventStream {
+  final StreamController<String> _controller = StreamController<String>();
+
+  JsEventStream() {
+    _startListening();
+  }
+
+  Stream<String> get stream => _controller.stream;
+
+  void _startListening() {
+    js.context['resultEmitter'].callMethod('addEventListener', [
+      'newResult',
+      js.allowInterop((event) {
+        final result = js_util.getProperty(event, 'detail');
+        _controller.add(result);
+      })
+    ]);
+  }
+
+  void dispose() {
+    _controller.close();
+  }
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -35,29 +59,17 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final StreamController<String> _resultStreamController =
-      StreamController<String>();
+  late final JsEventStream _jsEventStream;
 
   @override
   void initState() {
     super.initState();
-    _startListeningForResults();
-  }
-
-  void _startListeningForResults() {
-    // Listen for JavaScript `newResult` events
-    js.context['resultEmitter'].callMethod('addEventListener', [
-      'newResult',
-      js.allowInterop((event) {
-        final result = js_util.getProperty(event, 'detail');
-        _resultStreamController.add(result);
-      })
-    ]);
+    _jsEventStream = JsEventStream();
   }
 
   @override
   void dispose() {
-    _resultStreamController.close();
+    _jsEventStream.dispose();
     super.dispose();
   }
 
@@ -80,7 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const Text('Processed Results:'),
             StreamBuilder<String>(
-              stream: _resultStreamController.stream,
+              stream: _jsEventStream.stream,
               builder: (context, snapshot) {
                 return Text(snapshot.data ?? 'Waiting for results...');
               },
