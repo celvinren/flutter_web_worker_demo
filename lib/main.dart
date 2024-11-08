@@ -1,7 +1,6 @@
-// ignore_for_file: avoid_web_libraries_in_flutter
-
 import 'dart:async';
 import 'dart:js' as js;
+import 'dart:js_util' as js_util;
 
 import 'package:flutter/material.dart';
 
@@ -25,16 +24,47 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
   final String title;
 
   @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  final StreamController<String> _resultStreamController =
+      StreamController<String>();
+
+  @override
+  void initState() {
+    super.initState();
+    _startListeningForResults();
+  }
+
+  void _startListeningForResults() {
+    // Listen for JavaScript `newResult` events
+    js.context['resultEmitter'].callMethod('addEventListener', [
+      'newResult',
+      js.allowInterop((event) {
+        final result = js_util.getProperty(event, 'detail');
+        _resultStreamController.add(result);
+      })
+    ]);
+  }
+
+  @override
+  void dispose() {
+    _resultStreamController.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Text(widget.title),
       ),
       body: Center(
         child: Column(
@@ -44,10 +74,14 @@ class MyHomePage extends StatelessWidget {
               onPressed: () async {
                 await findMistakes('en', 'test', ['hello', 'world']);
               },
-              child: const Text('Test'),
+              child: const Text('Start Processing'),
             ),
-            const Text(
-              'You have pushed the button this many times:',
+            const Text('Processed Results:'),
+            StreamBuilder<String>(
+              stream: _resultStreamController.stream,
+              builder: (context, snapshot) {
+                return Text(snapshot.data ?? 'Waiting for results...');
+              },
             ),
           ],
         ),
@@ -56,38 +90,8 @@ class MyHomePage extends StatelessWidget {
   }
 }
 
-Future<String?> findMistakes(
-    String locale, String text, List<String> dic) async {
-  final dataStream = _webWorkerResult(locale, text, dic).asBroadcastStream();
-  final result = await dataStream.last;
-  return result;
-}
-
-Stream<String> _webWorkerResult(
-    String locale, String text, List<String> dic) async* {
-  StreamController<String> controller = StreamController<String>();
+Future<void> findMistakes(String locale, String text, List<String> dic) async {
   final jsDic = js.JsObject.jsify(dic);
-  // check is Web Worker support
   js.context
       .callMethod('postMessageToFindMistakesWorker', [locale, text, jsDic]);
-
-  var result;
-  // wait workerResult result
-  while (js.context['foundMistakesResult'] == null || result == null) {
-    result = js.context.callMethod('getResult');
-    if (result == null) {
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-  }
-
-  js.context.callMethod('deleteResult');
-  // print('Result: original - ${imageData.length}');
-  // print('Result: resized - ${result.length}');
-  // handle Worker result here
-  if (result != null) {
-    controller.add(result);
-    controller.close(); // end Stream
-  }
-
-  yield* controller.stream;
 }
