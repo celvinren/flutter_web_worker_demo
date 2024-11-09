@@ -26,29 +26,41 @@ class MyApp extends StatelessWidget {
 }
 
 class JsEventStream {
-  final StreamController<String> _controller = StreamController<String>();
+  final StreamController<Map<String, dynamic>> _controller =
+      StreamController<Map<String, dynamic>>();
 
   JsEventStream() {
     _startListening();
   }
 
-  Stream<String> get stream => _controller.stream;
+  Stream<Map<String, dynamic>> get stream => _controller.stream;
 
   void _startListening() {
     js.context['resultEmitter'].callMethod('addEventListener', [
       'newResult',
       js.allowInterop((event) {
-        final result = js_util.getProperty(event, 'detail');
-        _controller.add(result);
+        // Retrieve the JavaScript object and convert it to a Dart map
+        final jsResult = js_util.getProperty(event, 'detail');
+        final text = js_util.getProperty(jsResult, 'text');
+        final dictionary =
+            List<String>.from(js_util.getProperty(jsResult, 'dictionary'));
+        final checkedWords =
+            List<String>.from(js_util.getProperty(jsResult, 'checkedWords'));
+        debugPrint('Text: $text');
+        debugPrint('Dictionary: $dictionary');
+        debugPrint('Checked Words: $checkedWords');
+        // final dartResult = _jsObjectToMap(jsResult);
+        // _controller.add(dartResult);
       })
     ]);
   }
 
   Future<void> findMistakes(
-      String locale, String text, List<String> dictionary) async {
+      String text, List<String> dictionary, Set<String> checkedWords) async {
     final jsDictionary = js.JsObject.jsify(dictionary);
-    js.context.callMethod(
-        'postMessageToFindMistakesWorker', [locale, text, jsDictionary]);
+    final jsCheckedWords = js.JsObject.jsify(checkedWords.toList());
+    js.context.callMethod('postMessageToFindMistakesWorker',
+        [text, jsDictionary, jsCheckedWords]);
   }
 
   void dispose() {
@@ -93,15 +105,28 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
               onPressed: () async {
                 await _jsEventStream.findMistakes(
-                    'en', 'test${Random().nextInt(100)}', ['hello', 'world']);
+                  'test${Random().nextInt(100)}',
+                  ['hello', 'world'],
+                  {'find'},
+                );
               },
               child: const Text('Start Processing'),
             ),
             const Text('Processed Results:'),
-            StreamBuilder<String>(
+            StreamBuilder<Map<String, dynamic>>(
               stream: _jsEventStream.stream,
               builder: (context, snapshot) {
-                return Text(snapshot.data ?? 'Waiting for results...');
+                if (snapshot.hasData) {
+                  final data = snapshot.data!;
+                  return Text(
+                    'Text: ${data['text']}\n'
+                    'Dictionary: ${data['dictionary']}\n'
+                    'Checked Words: ${data['checkedWords']}\n'
+                    'Processed Text: ${data['processedText']}',
+                  );
+                } else {
+                  return const Text('Waiting for results...');
+                }
               },
             ),
           ],
